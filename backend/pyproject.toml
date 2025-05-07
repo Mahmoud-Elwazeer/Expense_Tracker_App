@@ -1,5 +1,5 @@
 [project]
-name = "testt"
+name = "Expense_Tracker_App"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -17,6 +17,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "drf-spectacular>=0.28.0",
     "faker>=37.1.0",
+    "gunicorn>=23.0.0",
     "mysqlclient>=2.2.7",
     "python-dotenv>=1.1.0",
     "requests>=2.32.3",
