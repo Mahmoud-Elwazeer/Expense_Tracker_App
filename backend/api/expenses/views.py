@@ -5,12 +5,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum
 from django.utils.timezone import now
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, DateFilter, CharFilter
 
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
 
     def get_queryset(self):
+        print("User:", self.request)
         return Category.objects.filter(user=self.request.user) | Category.objects.filter(user__isnull=True)
 
     def perform_create(self, serializer):
