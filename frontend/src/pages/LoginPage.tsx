@@ -25,25 +25,27 @@ const LoginPage: React.FC = () => {
       toast.error('Email and password are required');
       return;
     }
-
+  
     setIsLoading(true);
     try {
       const response = await api.post('/auth/login', formData);
       const { access } = response.data;
-
-      console.log('Login response:', response.data);
       
-      // Store token in cookie
+      console.log('Login successful, token received');
+      
+      // Store token in cookie with proper configuration
       Cookies.set('authToken', access, { 
         expires: 7,
         path: '/',
-        sameSite: 'strict'
-      }); // Expires in 7 days
+        sameSite: 'lax' // Changed from 'strict' to 'lax' to allow cross-page navigation
+      });
       
-      toast.success('Login successful!');
-      // Force a page reload to ensure all auth states are updated
-      // window.location.href = '/dashboard';
-      navigate('/dashboard');
+      // Add a small delay to ensure cookie is set before navigation
+      setTimeout(() => {
+        toast.success('Login successful!');
+        // Use navigate rather than direct window location for proper React Router navigation
+        navigate('/dashboard');
+      }, 100);
     } catch (error) {
       console.error('Login error:', error);
       // Error handling is done in the API interceptor
@@ -51,6 +53,8 @@ const LoginPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+  
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50 p-4">

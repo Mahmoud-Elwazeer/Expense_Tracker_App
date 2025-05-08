@@ -5,10 +5,11 @@ import api from '../../utils/api';
 import ExpenseForm from './ExpenseForm';
 import FilterPanel from './FilterPanel';
 
+// Updated interface to handle potential different category formats
 interface Expense {
   id: number;
   amount: number;
-  category: string;
+  category: string | { id: number; name: string }; // Handle both string and object formats
   description: string;
   date: string;
 }
@@ -27,13 +28,21 @@ const ExpensesView: React.FC = () => {
   });
   const [monthlyReport, setMonthlyReport] = useState<{ total_expenses: number } | null>(null);
   const [isReportLoading, setIsReportLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchExpenses();
+    // Small delay to ensure authentication is properly set up
+    const timer = setTimeout(() => {
+      fetchExpenses();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [filterParams]);
 
   const fetchExpenses = async () => {
     setIsLoading(true);
+    setFetchError(null);
+    
     try {
       // Build query string from filter params
       const queryParams = new URLSearchParams();
@@ -43,11 +52,51 @@ const ExpensesView: React.FC = () => {
       
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
       const response = await api.get(`/expenses/${query}`);
-      setExpenses(response.data);
+      
+      // Make sure response.data exists and is an array
+      if (Array.isArray(response.data)) {
+        setExpenses(response.data);
+      } else if (response.data && typeof response.data === 'object') {
+        // Handle case where response might be wrapped in a data property
+        setExpenses(Array.isArray(response.data.results) ? response.data.results : []);
+      } else {
+        console.error('Unexpected response format:', response.data);
+        setExpenses([]);
+        setFetchError('Received unexpected data format from server');
+      }
     } catch (error) {
       console.error('Error fetching expenses:', error);
+      setFetchError('Failed to load expenses. Please try again later.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Helper function to safely get category name regardless of format
+  const getCategoryName = (category: string | { id: number; name: string }): string => {
+    if (typeof category === 'string') {
+      return category;
+    }
+    return category?.name || 'Unknown';
+  };
+
+  // Helper function to safely format date
+  const formatDate = (dateString: string): string => {
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (error) {
+      console.error('Invalid date format:', dateString, error);
+      return 'Invalid date';
+    }
+  };
+
+  // Helper function to safely format amount
+  const formatAmount = (amount: number): string => {
+    try {
+      return amount.toFixed(2);
+    } catch (error) {
+      console.error('Invalid amount format:', amount, error);
+      return 'N/A';
     }
   };
 
@@ -65,6 +114,7 @@ const ExpensesView: React.FC = () => {
       fetchExpenses();
     } catch (error) {
       console.error('Error deleting expense:', error);
+      toast.error('Failed to delete expense. Please try again.');
     }
   };
 
@@ -90,10 +140,17 @@ const ExpensesView: React.FC = () => {
     setIsReportLoading(true);
     try {
       const response = await api.get('/expenses/monthly_report/');
-      setMonthlyReport(response.data);
-      toast.success('Monthly report loaded');
+      
+      if (response.data && typeof response.data.total_expenses === 'number') {
+        setMonthlyReport(response.data);
+        toast.success('Monthly report loaded');
+      } else {
+        console.error('Unexpected monthly report format:', response.data);
+        toast.error('Could not load monthly report due to data format issues');
+      }
     } catch (error) {
       console.error('Error fetching monthly report:', error);
+      toast.error('Failed to load monthly report. Please try again.');
     } finally {
       setIsReportLoading(false);
     }
@@ -139,11 +196,23 @@ const ExpensesView: React.FC = () => {
           </div>
         </div>
 
+        {fetchError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700">{fetchError}</p>
+            <button 
+              onClick={fetchExpenses}
+              className="mt-2 text-sm text-red-600 hover:text-red-800 flex items-center"
+            >
+              <RefreshCcw className="mr-1 h-4 w-4" /> Try again
+            </button>
+          </div>
+        )}
+
         {monthlyReport && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h2 className="font-semibold text-blue-800">Monthly Report</h2>
             <p className="mt-1 text-blue-600">
-              Total expenses this month: <span className="font-bold">${monthlyReport.total_expenses.toFixed(2)}</span>
+              Total expenses this month: <span className="font-bold">${formatAmount(monthlyReport.total_expenses)}</span>
             </p>
           </div>
         )}
@@ -199,18 +268,18 @@ const ExpensesView: React.FC = () => {
                 {expenses.map((expense) => (
                   <tr key={expense.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(expense.date).toLocaleDateString()}
+                      {formatDate(expense.date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                        {expense.category}
+                        {getCategoryName(expense.category)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {expense.description}
+                      {expense.description || 'No description'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      ${expense.amount.toFixed(2)}
+                      ${formatAmount(expense.amount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
