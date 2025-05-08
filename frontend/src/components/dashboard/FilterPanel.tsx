@@ -30,9 +30,21 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ initialFilters, onSubmit, onC
     setIsLoading(true);
     try {
       const response = await api.get('/categories/');
-      setCategories(response.data);
+      console.log('API categories response:', response.data);
+  
+      // Ensure we are accessing the correct property, which is 'results' in the API response
+      let categoriesData: Category[] = [];
+  
+      if (Array.isArray(response.data.results)) {
+        categoriesData = response.data.results; // Get the categories from the 'results' key
+      } else {
+        console.warn('Unexpected categories data format');
+      }
+  
+      setCategories(categoriesData);
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategories([]); // Fallback to empty array on error
     } finally {
       setIsLoading(false);
     }

@@ -11,7 +11,7 @@ interface Category {
 interface Expense {
   id: number;
   amount: number;
-  category: string;
+  category: number; // use number here instead of string for consistency
   description: string;
   date: string;
 }
@@ -25,7 +25,7 @@ interface ExpenseFormProps {
 const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     amount: expense?.amount.toString() || '',
-    category: expense?.category || '',
+    category: expense?.category?.toString() || '',
     description: expense?.description || '',
     date: expense?.date ? expense.date.split('T')[0] : new Date().toISOString().split('T')[0],
   });
@@ -39,15 +39,28 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSubmit, onCancel }
 
   const fetchCategories = async () => {
     setIsLoadingCategories(true);
-    try {
-      const response = await api.get('/categories/');
-      setCategories(response.data);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    } finally {
-      setIsLoadingCategories(false);
-    }
-  };
+      try {
+        const response = await api.get('/categories/');
+        console.log('API categories response:', response.data);
+    
+        // Ensure we are accessing the correct property, which is 'results' in the API response
+        let categoriesData: Category[] = [];
+    
+        if (Array.isArray(response.data.results)) {
+          categoriesData = response.data.results; // Get the categories from the 'results' key
+        } else {
+          console.warn('Unexpected categories data format');
+        }
+    
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        setCategories([]); // Fallback to empty array on error
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -56,17 +69,19 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSubmit, onCancel }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.amount || !formData.category || !formData.date) {
       toast.error('Amount, category, and date are required');
       return;
     }
 
     setIsLoading(true);
-    
+
     const payload = {
-      ...formData,
       amount: parseFloat(formData.amount),
+      category: parseInt(formData.category, 10), // convert category to number
+      description: formData.description,
+      date: formData.date,
     };
 
     try {
@@ -80,6 +95,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSubmit, onCancel }
       onSubmit();
     } catch (error) {
       console.error('Error saving expense:', error);
+      toast.error('An error occurred while saving expense');
     } finally {
       setIsLoading(false);
     }
@@ -139,8 +155,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSubmit, onCancel }
                   required
                 >
                   <option value="">Select a category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.name}>
+                  {Array.isArray(categories) && categories.map((category) => (
+                    <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
                   ))}

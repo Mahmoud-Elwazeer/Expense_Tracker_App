@@ -11,8 +11,8 @@ interface Category {
 
 const CategoriesView: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
 
   useEffect(() => {
@@ -23,9 +23,21 @@ const CategoriesView: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await api.get('/categories/');
-      setCategories(response.data);
+      console.log('API categories response:', response.data);
+  
+      // Ensure we are accessing the correct property, which is 'results' in the API response
+      let categoriesData: Category[] = [];
+  
+      if (Array.isArray(response.data.results)) {
+        categoriesData = response.data.results; // Get the categories from the 'results' key
+      } else {
+        console.warn('Unexpected categories data format');
+      }
+  
+      setCategories(categoriesData);
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategories([]); // Fallback to empty array on error
     } finally {
       setIsLoading(false);
     }
@@ -37,21 +49,23 @@ const CategoriesView: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this category?')) return;
-    
+    const confirmed = window.confirm('Are you sure you want to delete this category?');
+    if (!confirmed) return;
+
     try {
       await api.delete(`/categories/${id}/`);
       toast.success('Category deleted successfully');
-      fetchCategories();
+      fetchCategories(); // Refresh the categories list
     } catch (error) {
       console.error('Error deleting category:', error);
+      toast.error('Failed to delete category');
     }
   };
 
   const handleFormSubmit = () => {
     setIsFormOpen(false);
     setCurrentCategory(null);
-    fetchCategories();
+    fetchCategories(); // Refresh after form submission
   };
 
   const handleFormCancel = () => {
@@ -65,8 +79,11 @@ const CategoriesView: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Categories</h1>
           <button
-            onClick={() => setIsFormOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 mt-4 sm:mt-0"
+            onClick={() => {
+              setCurrentCategory(null);
+              setIsFormOpen(true);
+            }}
+            className="inline-flex items-center px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow"
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Category
@@ -82,7 +99,7 @@ const CategoriesView: React.FC = () => {
           <div className="text-center py-12">
             <p className="text-lg text-gray-500">No categories found.</p>
             <p className="mt-1 text-sm text-gray-400">
-              Click the "Add Category" button to create your first category.
+              Click the &quot;Add Category&quot; button to create your first category.
             </p>
           </div>
         ) : (
@@ -90,21 +107,19 @@ const CategoriesView: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {categories.map((category) => (
-                  <tr key={category.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {category.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <tr key={category.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 text-sm text-gray-700">{category.name}</td>
+                    <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => handleEdit(category)}
                         className="text-blue-600 hover:text-blue-900 mr-4"
@@ -128,7 +143,6 @@ const CategoriesView: React.FC = () => {
         )}
       </div>
 
-      {/* Add/Edit Category Modal */}
       {isFormOpen && (
         <CategoryForm
           category={currentCategory}

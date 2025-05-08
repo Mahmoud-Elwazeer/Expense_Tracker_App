@@ -21,7 +21,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class ExpenseFilter(FilterSet):
     start_date = DateFilter(field_name="date", lookup_expr="gte")
     end_date = DateFilter(field_name="date", lookup_expr="lte")
-    category = CharFilter(field_name="category", lookup_expr="iexact")
+    category = CharFilter(field_name="category__name", lookup_expr="iexact")
 
     class Meta:
         model = Expense

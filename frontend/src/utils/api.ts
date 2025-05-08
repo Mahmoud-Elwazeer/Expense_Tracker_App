@@ -2,8 +2,8 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
 
-const API_BASE_URL = 'https://api.elwazeer.tech/api/v1';
-// const API_BASE_URL = 'http://localhost:8000/api/v1';
+// const API_BASE_URL = 'https://api.elwazeer.tech/api/v1';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // For debugging authentication issues
 const DEBUG_AUTH = true;

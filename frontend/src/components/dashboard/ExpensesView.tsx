@@ -42,28 +42,39 @@ const ExpensesView: React.FC = () => {
   const fetchExpenses = async () => {
     setIsLoading(true);
     setFetchError(null);
-    
+  
     try {
-      // Build query string from filter params
       const queryParams = new URLSearchParams();
       if (filterParams.category) queryParams.append('category', filterParams.category);
       if (filterParams.start_date) queryParams.append('start_date', filterParams.start_date);
       if (filterParams.end_date) queryParams.append('end_date', filterParams.end_date);
-      
+  
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
       const response = await api.get(`/expenses/${query}`);
-      
-      // Make sure response.data exists and is an array
+  
+      console.log(response.data);
+  
+      let rawExpenses: any[] = [];
+  
       if (Array.isArray(response.data)) {
-        setExpenses(response.data);
+        rawExpenses = response.data;
       } else if (response.data && typeof response.data === 'object') {
-        // Handle case where response might be wrapped in a data property
-        setExpenses(Array.isArray(response.data.results) ? response.data.results : []);
+        rawExpenses = Array.isArray(response.data.results) ? response.data.results : [];
       } else {
         console.error('Unexpected response format:', response.data);
         setExpenses([]);
         setFetchError('Received unexpected data format from server');
+        return;
       }
+  
+      // ✅ transform category from id to object with id & name
+      const transformedExpenses: Expense[] = rawExpenses.map((item) => ({
+        ...item,
+        amount: parseFloat(item.amount), // ensure amount is number
+        category: item.category_detail ? item.category_detail : { id: item.category, name: 'Unknown' },
+      }));
+  
+      setExpenses(transformedExpenses);
     } catch (error) {
       console.error('Error fetching expenses:', error);
       setFetchError('Failed to load expenses. Please try again later.');
