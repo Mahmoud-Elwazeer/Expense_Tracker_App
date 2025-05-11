@@ -12,7 +12,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
 
     def get_queryset(self):
-        print("User:", self.request)
+        if getattr(self, "swagger_fake_view", False):
+            return Category.objects.none()
         return Category.objects.filter(user=self.request.user) | Category.objects.filter(user__isnull=True)
 
     def perform_create(self, serializer):
@@ -35,6 +36,8 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     ordering = ['-date']
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # for drf-spectacular schema generation
+            return Expense.objects.none()
         return Expense.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
